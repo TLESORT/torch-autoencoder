@@ -21,7 +21,16 @@ function AE_Training(model,batch)
 	if opt.optimiser=="rmsprop" then  optimizer = optim.rmsprop end
 	if opt.optimiser=="adam" then optimizer = optim.adam end
 	model:cuda()
-   
+
+	input=batch
+	expected=batch
+
+	if opt.model=="DAE" then
+		noise=torch.rand(batch:size())
+		noise=(noise-noise:mean())/(noise:std())
+		noise=noise:cuda()
+		input=torch.add(input,noise)
+	end
 
    -- create closure to evaluate f(X) and df/dX
    local feval = function(x)
@@ -36,9 +45,9 @@ function AE_Training(model,batch)
 		--criterion=nn.MSECriterion()
 		criterion=nn.AbsCriterion()
 		criterion=criterion:cuda()
-		ouput=model:forward(batch)
-		loss = criterion:forward(ouput, batch)
-		gradInput=model:backward(batch, criterion:backward(ouput, batch))
+		ouput=model:forward(input)
+		loss = criterion:forward(ouput, expected)
+		gradInput=model:backward(input, criterion:backward(ouput, expected))
 		--print(gradInput:mean())
       return loss,gradParameters
    end
@@ -50,7 +59,7 @@ function AE_Training(model,batch)
 		print(torch.cmul(model:get(6).gradInput, model:get(6).gradInput):mean())
 	end
 
-   return loss[1],model.output
+   return loss[1],model.output, input
 end
 
 
@@ -83,7 +92,7 @@ function train_Epoch(list_folders_images,list_txt,Log_Folder,use_simulate_images
 			for numImage=1,nbBatch do
 				batch=load_batch(list,BatchSize,image_height,image_width,(numImage-1)*BatchSize+1)
 				Batch=batch:cuda()
-				loss_iter,output=AE_Training(model,Batch)
+				loss_iter,output,input=AE_Training(model,Batch)
 				loss = loss + loss_iter
 			end
 			xlua.progress(iter, nbIter)
@@ -92,7 +101,8 @@ function train_Epoch(list_folders_images,list_txt,Log_Folder,use_simulate_images
 	table.insert(list_corr,corr)
 	table.insert(list_loss,loss/(nbBatch*nbIter*BatchSize))
 	print("Mean Loss : "..loss/(nbBatch*nbIter*BatchSize))
-	display=torch.cat(Batch[1],output[1]:reshape(3,200,200),3)
+
+	display=torch.cat(input[1],output[1]:reshape(3,200,200),3)
 	image.save("./Log/reconstruction/reconstruction_epoch_"..epoch..".jpg",display)
 	--image.display(display)
 
@@ -106,6 +116,7 @@ end
 local cmd = torch.CmdLine()
 cmd:option('-optimiser', 'sgd', 'Optimiser : adam|sgd|rmsprop')
 cmd:option('-execution', 'release', 'execution : debug|release')
+cmd:option('-model', 'AE', 'model : AE|DAE')
 opt = cmd:parse(arg)
 
 
