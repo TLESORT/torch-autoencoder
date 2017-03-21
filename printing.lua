@@ -1,15 +1,40 @@
-function Print_performance(model, list, name, Log_Folder,truth, displayPlot)
+function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPlot)
 
    local list_learned_rep={}
+	if opt.network=="deep" then
+		id_rep=23
+	else
+		id_rep=4
+	end
       
    for i=1, #list do
       Batch=load_batch(list,1,200,200,i)
       
       model:forward(Batch:cuda())
-      local learned_rep=model:get(4).output[1] 	
+      local learned_rep=model:get(id_rep).output[1] 	
+
+-- sample taken for visualisation
+		if i<20 then
+			concat=torch.cat(Batch[1]:double(),model.output:double():reshape(3,200,200),3)
+			if i%5==1 then display=concat
+			elseif i%5==0 and i==5 then 
+				display=torch.cat(display,concat,2)
+				patchwork = display 
+			elseif i%5==0 then 
+				display=torch.cat(display,concat,2)
+				if i==5 then
+					patchwork = display
+				else 
+					patchwork = torch.cat(patchwork,display ,3)
+				end
+			else display=torch.cat(display,concat,2)
+			end
+		end
 
       table.insert(list_learned_rep,learned_rep)
    end
+	
+	image.save("./Log/reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
    corr=ComputeCorrelation(truth,list_learned_rep)
    if displayPlot then
       show_figure(list_learned_rep, Log_Folder..'state'..name..'.log')
@@ -68,6 +93,15 @@ function show_figure(output, Name,point)
    local accLogger = optim.Logger(Name)
    for i=1, #output do accLogger:add{[Variable_Output] = output[i]}end
    accLogger:style{[Variable_Output] = '+'}
+   accLogger.showPlot = false
+   accLogger:plot()
+end
+
+function print_list(list_loss,Name_file, Name)
+   local Variable_Output=Name
+   local accLogger = optim.Logger(Name_file)
+   for i=1, #list_loss do accLogger:add{[Variable_Output] = list_loss[i]}end
+   accLogger:style{[Variable_Output] = '-'}
    accLogger.showPlot = false
    accLogger:plot()
 end

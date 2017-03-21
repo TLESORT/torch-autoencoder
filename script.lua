@@ -8,7 +8,7 @@ require 'math'
 require 'string'
 require 'cunn'
 require 'nngraph'
-local cuda = pcall(require, 'cutorch') -- Use CUDA if available
+--local cuda = pcall(require, 'cutorch') -- Use CUDA if available
 
 require "Get_Baxter_Files"
 require "function"
@@ -16,7 +16,7 @@ require "printing"
 
 
 function AE_Training(model,batch)
-   local LR= 0.1
+   local LR= 0.001
 	if opt.optimiser=="sgd" then  optimizer = optim.sgd end
 	if opt.optimiser=="rmsprop" then  optimizer = optim.rmsprop end
 	if opt.optimiser=="adam" then optimizer = optim.adam end
@@ -29,7 +29,7 @@ function AE_Training(model,batch)
 		noise=torch.rand(batch:size())
 		noise=(noise-noise:mean())/(noise:std())
 		noise=noise:cuda()
-		input=torch.add(input,noise)
+		input=input+noise
 	end
 
    -- create closure to evaluate f(X) and df/dX
@@ -67,7 +67,7 @@ function train_Epoch(list_folders_images,list_txt,Log_Folder,use_simulate_images
 
 
 	local nbEpoch=50
-	local nbIter=1
+	local nbIter=100
 	local list_loss={}
 	local list_corr={}
 	local loss=0
@@ -101,12 +101,14 @@ function train_Epoch(list_folders_images,list_txt,Log_Folder,use_simulate_images
 	table.insert(list_corr,corr)
 	table.insert(list_loss,loss/(nbBatch*nbIter*BatchSize))
 	print("Mean Loss : "..loss/(nbBatch*nbIter*BatchSize))
+	print_list(list_loss, "Mean_Loss.log","loss")
+	print_list(list_corr, "corr.log","corr")
 
-	display=torch.cat(input[1],output[1]:reshape(3,200,200),3)
-	image.save("./Log/reconstruction/reconstruction_epoch_"..epoch..".jpg",display)
+	--display=torch.cat(input[1],output[1]:reshape(3,200,200),3)
+	
 	--image.display(display)
 
-	corr=Print_performance(model, img_test, "Test"..epoch, Log_Folder,truth, plot)
+	corr=Print_performance(model, img_test, "Test"..epoch, Log_Folder,truth,epoch, plot)
     print("Corr : "..corr)
 	end
       save_model(model,name_save)
@@ -116,6 +118,7 @@ end
 local cmd = torch.CmdLine()
 cmd:option('-optimiser', 'sgd', 'Optimiser : adam|sgd|rmsprop')
 cmd:option('-execution', 'release', 'execution : debug|release')
+cmd:option('-network', 'deep', 'network : deep|base')
 cmd:option('-model', 'AE', 'model : AE|DAE')
 opt = cmd:parse(arg)
 
@@ -123,7 +126,9 @@ opt = cmd:parse(arg)
 torch.manualSeed(1337)
 LR=0.0001
 local dataAugmentation=true
+
 local Log_Folder='./Log/'
+if opt.network=="deep" then Log_Folder='./Deep_Log/' end
 local list_folders_images, list_txt=Get_HeadCamera_HeadMvt()
 local nb_dims=1
 local hidden=100
@@ -131,7 +136,8 @@ BatchSize=2
 image_width=200
 image_height=200
 
-require('./model')
+if opt.network=="deep" then require('./deep_model')
+else require('./model') end
 model = getModel(image_width,image_height,3,hidden,nb_dims)
 model=model:cuda()
 parameters,gradParameters = model:getParameters()
