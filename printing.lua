@@ -34,7 +34,7 @@ function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPl
       table.insert(list_learned_rep,learned_rep)
    end
 	
-	image.save("./Log/reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
+	image.save(Log_Folder.."reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
    corr=ComputeCorrelation(truth,list_learned_rep)
    if displayPlot then
       show_figure(list_learned_rep, Log_Folder..'state'..name..'.log')

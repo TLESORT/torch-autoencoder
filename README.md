@@ -9,5 +9,5 @@ https://github.com/TLESORT/Baxter_Learning
 
 
 '''
-th script.lua -execution release -optimiser sgd
+th script.lua -execution release -optimiser adam
 '''

@@ -101,8 +101,8 @@ function train_Epoch(list_folders_images,list_txt,Log_Folder,use_simulate_images
 	table.insert(list_corr,corr)
 	table.insert(list_loss,loss/(nbBatch*nbIter*BatchSize))
 	print("Mean Loss : "..loss/(nbBatch*nbIter*BatchSize))
-	print_list(list_loss, "Mean_Loss.log","loss")
-	print_list(list_corr, "corr.log","corr")
+	print_list(list_loss, Log_Folder.."Mean_Loss.log","loss")
+	print_list(list_corr, Log_Folder.."corr.log","corr")
 
 	--display=torch.cat(input[1],output[1]:reshape(3,200,200),3)
 	
