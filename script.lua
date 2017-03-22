@@ -66,7 +66,7 @@ function train_Epoch(list_folders_images,list_txt,Log_Folder,use_simulate_images
 
 
 	local nbEpoch=50
-	local nbIter=1
+	local nbIter=100
 	local list_loss={}
 	local list_corr={}
 	local loss=0

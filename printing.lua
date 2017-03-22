@@ -37,7 +37,7 @@ function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPl
 	image.save(Log_Folder.."reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
 
 	if opt.dimension=="3D" then
-   		corr=ComputeCorrelation_3D(truth,list_learned_rep,3,,"correlation")
+   		corr=ComputeCorrelation_3D(truth,list_learned_rep,3,"correlation")
 		show_figure_3D(list_learned_rep, Log_Folder..'state'..name..'.log')
 	else
    		corr=ComputeCorrelation(truth,list_learned_rep)
