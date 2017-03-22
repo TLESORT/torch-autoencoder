@@ -33,7 +33,7 @@ function getModel(height,width,len,hidden,nb_dims)
 	Timnet:add(nn.View(100))                
 	Timnet:add(nn.Linear(100, 500))
 	Timnet:add(nn.ReLU())                    
-	Timnet:add(nn.Linear(500, 1))
+	Timnet:add(nn.Linear(500, nb_dims))
       
 	Timnet:add(nn.Linear(nb_dims, hidden))
 	Timnet:add(nn.ReLU())                    

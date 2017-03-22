@@ -6,12 +6,12 @@ function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPl
 	else
 		id_rep=4
 	end
-      
-   for i=1, #list do
+   --the length of the test depend on the ground truth values
+   for i=1, #truth do
       Batch=load_batch(list,1,200,200,i)
       
       model:forward(Batch:cuda())
-      local learned_rep=model:get(id_rep).output[1] 	
+      local learned_rep=model:get(id_rep).output:clone() 	
 
 -- sample taken for visualisation
 		if i<20 then
@@ -35,12 +35,41 @@ function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPl
    end
 	
 	image.save(Log_Folder.."reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
-   corr=ComputeCorrelation(truth,list_learned_rep)
-   if displayPlot then
-      show_figure(list_learned_rep, Log_Folder..'state'..name..'.log')
-      show_figure_normalized(list_learned_rep,truth, Log_Folder..'stateNorm'..name..'.log',corr)
-   end
+
+	if opt.dimension=="3D" then
+   		corr=ComputeCorrelation_3D(truth,list_learned_rep,3,,"correlation")
+		show_figure_3D(list_learned_rep, Log_Folder..'state'..name..'.log')
+	else
+   		corr=ComputeCorrelation(truth,list_learned_rep)
+		if displayPlot then
+		  show_figure(list_learned_rep, Log_Folder..'state'..name..'.log')
+		  show_figure_normalized(list_learned_rep,truth, Log_Folder..'stateNorm'..name..'.log',corr)
+		end
+	end
    return corr
+end
+
+function ComputeCorrelation_3D(truth,output,dimension,label)
+	local corr=torch.Tensor(dimension,dimension)
+	Truth=torch.Tensor(dimension,#truth)
+	Output=torch.Tensor(dimension,#output)
+
+
+	for i=1, #truth do
+		for j=1, dimension do
+			Truth[j][i]=truth[i][j]
+			Output[j][i]=output[i][j]
+		end
+	end	
+	for i=1,dimension do
+		for j=1, dimension do
+			corr[i][j]=torch.cmul((Truth[i]-Truth[i]:mean()),(Output[j]-Output[j]:mean())):mean()
+			corr[i][j]=corr[i][j]/(Truth[i]:std()*Output[j]:std())
+		end
+	end
+	print(label)
+	print(corr)
+	return corr
 end
 
 function ComputeCorrelation(truth,output)
@@ -48,7 +77,7 @@ function ComputeCorrelation(truth,output)
    Output=torch.Tensor(#output)
    for i=1, #truth do
       Truth[i]=truth[i]
-      Output[i]=output[i]
+      Output[i]=output[i][1]
    end
    corr=torch.cmul((Truth-Truth:mean()),(Output-Output:mean())):mean()
    corr=corr/(Truth:std()*Output:std())
@@ -68,7 +97,7 @@ function show_figure_normalized(output,truth, Name, corr)
 
    for i=1, #truth do
       Truth[i]=truth[i]
-      Output[i]=output[i]
+      Output[i]=output[i][1]
    end
    Truth=corr*(Truth-Truth:mean())/Truth:std()
    Output=(Output-Output:mean())/Output:std()
@@ -91,10 +120,32 @@ function show_figure(output, Name,point)
    local point=point or '+'
    local Variable_Output='State'
    local accLogger = optim.Logger(Name)
-   for i=1, #output do accLogger:add{[Variable_Output] = output[i]}end
+   for i=1, #output do accLogger:add{[Variable_Output] = output[i][1]}end
    accLogger:style{[Variable_Output] = '+'}
    accLogger.showPlot = false
    accLogger:plot()
+end
+
+function show_figure_3D(list_out1, Name)
+	local Variable_Name= 'State'
+	-- log results to files
+	local accLogger = optim.Logger(Name)
+
+
+	for i=1, #list_out1 do
+		accLogger:add{[Variable_Name.."-DIM-1"] = list_out1[i][1],
+				[Variable_Name.."-DIM-2"] = list_out1[i][2],
+				[Variable_Name.."-DIM-3"] = list_out1[i][3]
+					}
+	end
+	-- plot logger
+	accLogger:style{[Variable_Name.."-DIM-1"] = '-',
+			[Variable_Name.."-DIM-2"] = '-',
+			[Variable_Name.."-DIM-3"] = '-'
+					}
+	
+	accLogger.showPlot = false
+	accLogger:plot()
 end
 
 function print_list(list_loss,Name_file, Name)
