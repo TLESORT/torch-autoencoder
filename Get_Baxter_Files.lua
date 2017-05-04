@@ -51,28 +51,28 @@ function Get_Folders(Path, including)
 end
 
 function Get_Folders_3D(Path, including, excluding,list)
-	local list=list or {}
-	local incl=including or ""
-	local excl=excluding or "uyfouhjbhytfoughl" -- random motif
-	for file in paths.files(Path) do
-	   -- We only load files that match 2016 because we know that there are the folder we are interested in
-	   if file:find(incl) and (not file:find(excl)) then
-	      -- and insert the ones we care about in our table
-	      table.insert(list, paths.concat(Path,file))
-	   end
-	end
-	return list
+   local list=list or {}
+   local incl=including or ""
+   local excl=excluding or "uyfouhjbhytfoughl" -- random motif
+   for file in paths.files(Path) do
+      -- We only load files that match 2016 because we know that there are the folder we are interested in
+      if file:find(incl) and (not file:find(excl)) then
+         -- and insert the ones we care about in our table
+         table.insert(list, paths.concat(Path,file))
+      end
+   end
+   return list
 end
 
 function txt_path(Path,including)
-	local including=including or ""
-	local txt=nil
-	for file in paths.files(Path) do
-	   if file:find(including..'.txt' .. '$') then
-	      txt=paths.concat(Path,file)
-	   end
-	end
-	return txt
+   local including=including or ""
+   local txt=nil
+   for file in paths.files(Path) do
+      if file:find(including..'.txt' .. '$') then
+         txt=paths.concat(Path,file)
+      end
+   end
+   return txt
 end
 
 ---------------------------------------------------------------------------------------
@@ -82,20 +82,20 @@ end
 -- Output (list_txt):  txt list associated to each directories (this txt file contains the grundtruth of the robot position)
 ---------------------------------------------------------------------------------------
 function Get_HeadCamera_HeadMvt(threeD)
-	local Path
-	local Paths_Folder={}
-	local list_txt={}
-	if threeD=="3D" then
-		Path="./Data_3D/"
-		local Paths=Get_Folders_3D(Path,'record')
-		for i=1, #Paths do
-			Paths_Folder=Get_Folders_3D(Paths[i],'recorded','txt',Paths_Folder)
-			table.insert(list_txt, txt_path(Paths[i],"endpoint_state"))
-		end
-	else
-		Path="./Data/"		
-	    Paths_Folder, list_txt=Get_Folders(Path,'head_pan')
-	end
+   local Path
+   local Paths_Folder={}
+   local list_txt={}
+   if threeD=="3D" then
+      Path="../baxter_representation_learning_3D/simpleData3D"
+      local Paths=Get_Folders_3D(Path,'record')
+      for i=1, #Paths do
+         Paths_Folder=Get_Folders_3D(Paths[i],'recorded','txt',Paths_Folder)
+         table.insert(list_txt, txt_path(Paths[i],"endpoint_state"))
+      end
+   else
+      Path="../baxter_representation_learning_1D/moreData/"
+      Paths_Folder, list_txt=Get_Folders(Path,'head_pan')
+   end
 
    table.sort(list_txt)
    table.sort(Paths_Folder)
@@ -163,23 +163,23 @@ function getTruth(txt)
 end
 
 function getTruth_3D(txt_joint, nb_part, part)
-	local x=2
-	local y=3
-	local z=4
-	
-	local tensor, label=tensorFromTxt(txt_joint)
-	local list_lenght = torch.floor((#tensor[{}])[1]/nb_part)
-	local start=list_lenght*part +1
+   local x=2
+   local y=3
+   local z=4
+   
+   local tensor, label=tensorFromTxt(txt_joint)
 
-	local list_truth={}
-	for i=start, start+list_lenght do--(#tensor[{}])[1] do	
-		local truth=torch.Tensor(3)
-		truth[1]=tensor[i][x]
-		truth[2]=tensor[i][y]
-		truth[3]=tensor[i][z]
-		table.insert(list_truth,truth)
-	end
-	return list_truth
+   numImages = tensor:size(1)
+   local list_truth={}
+
+   for i=1, numImages do--(#tensor[{}])[1] do	
+      local truth=torch.Tensor(3)
+      truth[1]=tensor[i][x]
+      truth[2]=tensor[i][y]
+      truth[3]=tensor[i][z]
+      table.insert(list_truth,truth)
+   end
+   return list_truth
 end
 
 

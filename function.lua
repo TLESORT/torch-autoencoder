@@ -1,7 +1,6 @@
-
-
 function save_model(model,path)
    --print("Saved at : "..path)
+   model.modules[2] = nil -- delete decoding part, no need to forward model
    model:float()
    parameters, gradParameters = model:getParameters()
    local lightModel = model:clone():float()

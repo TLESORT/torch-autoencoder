@@ -1,75 +1,88 @@
-function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPlot)
+require "lfs"
+require 'image'
 
+function Print_performance(model, list, name, Log_Folder,truth, epoch, displayPlot)
+   local patchwork
    local list_learned_rep={}
-	if opt.network=="deep" then
-		id_rep=23
-	else
-		id_rep=4
-	end
+
+   if opt.network=="deep" then
+      representation_layer=11
+   else
+      representation_layer=4
+   end
+
    --the length of the test depend on the ground truth values
    for i=1, #truth do
-      Batch=load_batch(list,1,200,200,i)
+      batch=load_batch(list,1,200,200,i)
+      out = model:forward(batch:cuda())
+
+      -- print("batch",batch:size())
+      -- w = image.display(batch:reshape(3,200,200))
+      -- io.read()
+      -- print("out",out:size())
+      -- image.display{image=out:reshape(3,200,200),win=w}
+
+      if i<20 then
+         current_comparison=torch.cat(batch[1]:double(),out:double():reshape(3,200,200),3)
+         if i%5==1 then --First cell of the line
+            line=current_comparison
+         elseif i==5 then -- First line, last cell of the line 
+            line=torch.cat(line,current_comparison,2)
+            patchwork = line 
+         elseif i%5==0 then --Last cell of the line (not first line)
+            line=torch.cat(line,current_comparison,2)
+            patchwork = torch.cat(patchwork,line ,3)
+         else
+            line=torch.cat(line,current_comparison,2)
+         end
+      end
+
+      local learned_rep=model:get(1):get(representation_layer).output:float()[1]
       
-      model:forward(Batch:cuda())
-      local learned_rep=model:get(id_rep).output:clone() 	
-
--- sample taken for visualisation
-		if i<20 then
-			concat=torch.cat(Batch[1]:double(),model.output:double():reshape(3,200,200),3)
-			if i%5==1 then display=concat
-			elseif i%5==0 and i==5 then 
-				display=torch.cat(display,concat,2)
-				patchwork = display 
-			elseif i%5==0 then 
-				display=torch.cat(display,concat,2)
-				if i==5 then
-					patchwork = display
-				else 
-					patchwork = torch.cat(patchwork,display ,3)
-				end
-			else display=torch.cat(display,concat,2)
-			end
-		end
-
       table.insert(list_learned_rep,learned_rep)
-   end
-	
-	image.save(Log_Folder.."reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
 
-	if opt.dimension=="3D" then
-   		corr=ComputeCorrelation_3D(truth,list_learned_rep,3,"correlation")
-		show_figure_3D(list_learned_rep, Log_Folder..'state'..name..'.log')
-	else
-   		corr=ComputeCorrelation(truth,list_learned_rep)
-		if displayPlot then
-		  show_figure(list_learned_rep, Log_Folder..'state'..name..'.log')
-		  show_figure_normalized(list_learned_rep,truth, Log_Folder..'stateNorm'..name..'.log',corr)
-		end
-	end
+   end
+
+   
+
+
+   image.save(Log_Folder.."reconstruction/reconstruction_epoch_"..epoch..".jpg",patchwork)
+
+   if opt.dimension=="3D" then
+      local lol
+      -- corr=ComputeCorrelation_3D(truth,list_learned_rep,3,"correlation")
+      -- show_figure_3D(list_learned_rep, Log_Folder..'state'..name..'.log')
+   else
+      corr=ComputeCorrelation(truth,list_learned_rep)
+      if displayPlot then
+         show_figure(list_learned_rep, Log_Folder..'state'..name..'.log')
+         show_figure_normalized(list_learned_rep,truth, Log_Folder..'stateNorm'..name..'.log',corr)
+      end
+   end
    return corr
+   
 end
 
 function ComputeCorrelation_3D(truth,output,dimension,label)
-	local corr=torch.Tensor(dimension,dimension)
-	Truth=torch.Tensor(dimension,#truth)
-	Output=torch.Tensor(dimension,#output)
+   local corr=torch.Tensor(dimension,dimension)
+   Truth=torch.Tensor(dimension,#truth)
+   Output=torch.Tensor(dimension,#output)
 
-
-	for i=1, #truth do
-		for j=1, dimension do
-			Truth[j][i]=truth[i][j]
-			Output[j][i]=output[i][j]
-		end
-	end	
-	for i=1,dimension do
-		for j=1, dimension do
-			corr[i][j]=torch.cmul((Truth[i]-Truth[i]:mean()),(Output[j]-Output[j]:mean())):mean()
-			corr[i][j]=corr[i][j]/(Truth[i]:std()*Output[j]:std())
-		end
-	end
-	print(label)
-	print(corr)
-	return corr
+   for i=1, #truth do
+      for j=1, dimension do
+         Truth[j][i]=truth[i][j]
+         Output[j][i]=output[i][j]
+      end
+   end	
+   for i=1,dimension do
+      for j=1, dimension do
+         corr[i][j]=torch.cmul((Truth[i]-Truth[i]:mean()),(Output[j]-Output[j]:mean())):mean()
+         corr[i][j]=corr[i][j]/(Truth[i]:std()*Output[j]:std())
+      end
+   end
+   print(label)
+   print(corr)
+   return corr
 end
 
 function ComputeCorrelation(truth,output)
@@ -127,25 +140,25 @@ function show_figure(output, Name,point)
 end
 
 function show_figure_3D(list_out1, Name)
-	local Variable_Name= 'State'
-	-- log results to files
-	local accLogger = optim.Logger(Name)
+   local Variable_Name= 'State'
+   -- log results to files
+   local accLogger = optim.Logger(Name)
 
 
-	for i=1, #list_out1 do
-		accLogger:add{[Variable_Name.."-DIM-1"] = list_out1[i][1],
-				[Variable_Name.."-DIM-2"] = list_out1[i][2],
-				[Variable_Name.."-DIM-3"] = list_out1[i][3]
-					}
-	end
-	-- plot logger
-	accLogger:style{[Variable_Name.."-DIM-1"] = '-',
-			[Variable_Name.."-DIM-2"] = '-',
-			[Variable_Name.."-DIM-3"] = '-'
-					}
-	
-	accLogger.showPlot = false
-	accLogger:plot()
+   for i=1, #list_out1 do
+      accLogger:add{[Variable_Name.."-DIM-1"] = list_out1[i][1],
+         [Variable_Name.."-DIM-2"] = list_out1[i][2],
+         [Variable_Name.."-DIM-3"] = list_out1[i][3]
+      }
+   end
+   -- plot logger
+   accLogger:style{[Variable_Name.."-DIM-1"] = '-',
+      [Variable_Name.."-DIM-2"] = '-',
+      [Variable_Name.."-DIM-3"] = '-'
+   }
+   
+   accLogger.showPlot = false
+   accLogger:plot()
 end
 
 function print_list(list_loss,Name_file, Name)
